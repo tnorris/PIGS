@@ -7,41 +7,44 @@ require File.dirname(__FILE__) + '/PIGSTuner'
 require File.dirname(__FILE__) + '/PIGSRoutes'
 
 if ARGV[0] then
-	port = ARGV[0]
+  port = ARGV[0]
 else
-	port = 9001
+  port = 9001
 end
 
 if $0 == __FILE__ then
 
-	# Create the server
-	mime_types = WEBrick::HTTPUtils::DefaultMimeTypes
-	mime_types.store 'js', 'application/javascript'
-	server = WEBrick::HTTPServer.new(
-		:Port => port,
-		:MimeTypes => mime_types
-		)
-	ip = IPSocket.getaddress(Socket.gethostname)
+  # Create the server
+  mime_types = WEBrick::HTTPUtils::DefaultMimeTypes
+  mime_types.store 'js', 'application/javascript'
+  server = WEBrick::HTTPServer.new(
+      :Port => port,
+      :MimeTypes => mime_types,
+  )
 
-	# Create a tuner
-	tuner = PIGSTuner.new
+  server.config[:fish] = "hat"
 
-	# Define routes
-	server.mount "/", WEBrick::HTTPServlet::FileHandler, './www/'
-	server.mount "/lucky", PIGSRoutes::LuckyRoute, tuner
-	server.mount "/control", PIGSRoutes::ControlsRoute, tuner
-	server.mount "/search", PIGSRoutes::SearchRoute, tuner
-	server.mount "/play", PIGSRoutes::PlayRoute, tuner
+  ip = IPSocket.getaddress(Socket.gethostname)
 
-	# Handle interuptions
-	trap "INT" do
-		server.shutdown
-	end
+  # Create a tuner
+  tuner = PIGSTuner.new
 
-	# Start the server
-	puts "\n===================="
-	puts " * PIGSServer running at #{ip} on port #{port}"
-	puts "====================\n\n"
+  # Define routes
+  server.mount '/', WEBrick::HTTPServlet::FileHandler, './www/'
+  server.mount '/lucky', PIGSRoutes::LuckyRoute, tuner
+  server.mount '/control', PIGSRoutes::ControlsRoute, tuner
+  server.mount '/search', PIGSRoutes::SearchRoute, tuner
+  server.mount '/play', PIGSRoutes::PlayRoute, tuner
 
-	server.start
+  # Handle interuptions
+  trap "INT" do
+    server.shutdown
+  end
+
+  # Start the server
+  puts "\n===================="
+  puts " * PIGSServer running at #{ip} on port #{port}"
+  puts "====================\n\n"
+
+  server.start
 end
