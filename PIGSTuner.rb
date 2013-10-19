@@ -45,7 +45,7 @@ class PIGSTuner
           STDIN.reopen(@read_io)
           @log.debug('PIGSTuner') {url}
           @log.info('PIGSTuner') {"execing: #{@backend_command.gsub('PIGSURL', url)}"}
-          `#{@backend_command.gsub('PIGSURL', url)})`
+          `#{@backend_command.gsub('PIGSURL', url)}`
           exit
         end
         Thread.new {
