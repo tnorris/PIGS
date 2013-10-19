@@ -3,14 +3,45 @@
 
 require 'rubygems'
 require 'webrick'
+require 'optparse'
+require 'ostruct'
+require 'logger'
+log = Logger.new(STDOUT)
+log.formatter = proc do |severity, datetime, progname, msg|
+  "[#{datetime}] #{severity} #{progname}: #{msg}\n"
+end
+
+
+#require the tuner and routes
 require File.dirname(__FILE__) + '/PIGSTuner'
 require File.dirname(__FILE__) + '/PIGSRoutes'
 
-if ARGV[0] then
-  port = ARGV[0]
-else
-  port = 9001
+#parse us some options, WOO!
+options = OpenStruct.new
+opts = OptionParser.new do |opts|
+  opts.on('-p [PORT]', '--port [PORT]', 'Run WEBrick on [PORT]. (default: 9001)') do |p|
+    options.port = p
+  end
+
+  opts.on('-b [BACKEND]', '--backend [BACKEND]', 'Path to [BACKEND] program to run (default: /usr/bin/mplayer)') do |b|
+    options.backend = b
+  end
+
+  opts.on('-a [ARGUMENTS]', '--arguments [ARGUMENTS]', Array, 'Arguments to pass to the backend, PIGSURL will be substituted with the url to the song to play (default: -really-quiet,"PIGSURL")') do |a|
+    options.arguments = a
+  end
+
+  opts.on_tail("-h", "--help", "Show this message") do
+    puts opts
+    exit
+  end
 end
+opts.parse!(ARGV)
+
+# set some defaults
+options.port ||= 9001
+options.backend   ||=  '/usr/bin/mplayer'
+options.arguments ||= %w(--really-quiet "PIGSURL")
 
 if $0 == __FILE__ then
 
@@ -18,16 +49,16 @@ if $0 == __FILE__ then
   mime_types = WEBrick::HTTPUtils::DefaultMimeTypes
   mime_types.store 'js', 'application/javascript'
   server = WEBrick::HTTPServer.new(
-      :Port => port,
+      :Port => options.port,
       :MimeTypes => mime_types,
   )
 
-  server.config[:fish] = "hat"
-
   ip = IPSocket.getaddress(Socket.gethostname)
 
+  options.log = log
+
   # Create a tuner
-  tuner = PIGSTuner.new
+  tuner = PIGSTuner.new options
 
   # Define routes
   server.mount '/', WEBrick::HTTPServlet::FileHandler, './www/'
@@ -42,9 +73,8 @@ if $0 == __FILE__ then
   end
 
   # Start the server
-  puts "\n===================="
-  puts " * PIGSServer running at #{ip} on port #{port}"
-  puts "====================\n\n"
+
+  log.info('PIGSServer') { "PIGSServer running at #{ip} on port #{options.port}" }
 
   server.start
 end
